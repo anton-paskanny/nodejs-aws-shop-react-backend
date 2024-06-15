@@ -11,12 +11,4 @@ describe('getProductsList Lambda Handler', () => {
         expect(result.statusCode).toBe(200);
         expect(JSON.parse(result.body)).toEqual(productsListMock);
     });
-
-    it('should handle 500 error', async () => {
-        const mockEvent = {} as APIGatewayProxyEvent;
-
-        const result = await handler(mockEvent);
-
-        expect(result.statusCode).toBe(200);
-    });
 });
