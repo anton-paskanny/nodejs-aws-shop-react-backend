@@ -1,6 +1,6 @@
 import { handler } from '../handlers/getProductsById';
 import { APIGatewayProxyEvent } from 'aws-lambda';
-import { productsListMock } from '../handlers/products';
+import { productsListMock } from '../mocks/products';
 
 describe('getProductsById Lambda Handler', () => {
     it('should return product details with status code 200', async () => {
