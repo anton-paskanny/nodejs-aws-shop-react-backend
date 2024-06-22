@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 import { ProductApi } from './product-service-api-gateway';
 import { GetProductsListLambda } from './lambdas/get-products-list-lambda';
 import { GetProductsByIdLambda } from './lambdas/get-products-by-id-lambda';
+import { CreateProductLambda } from './lambdas/create-product-lambda';
 import {
     PRODUCT_SERVICE_AWS_REGION,
     PRODUCT_SERVICE_TABLES,
@@ -42,15 +43,24 @@ export class ProductServiceStack extends cdk.Stack {
             environment
         );
 
+        const createProductLambda = new CreateProductLambda(
+            this,
+            'CreateProductLambda',
+            environment
+        );
+
         new ProductApi(this, 'ProductApi', {
             getProductsListLambda: getProductsListLambda.lambdaFunction,
             getProductsByIdLambda: getProductsByIdLambda.lambdaFunction,
+            createProductLambda: createProductLambda.lambdaFunction,
         });
 
         productsTable.grantReadWriteData(getProductsListLambda.lambdaFunction);
         productsTable.grantReadWriteData(getProductsByIdLambda.lambdaFunction);
+        productsTable.grantReadWriteData(createProductLambda.lambdaFunction);
 
         stocksTable.grantReadWriteData(getProductsListLambda.lambdaFunction);
         stocksTable.grantReadWriteData(getProductsByIdLambda.lambdaFunction);
+        stocksTable.grantReadWriteData(createProductLambda.lambdaFunction);
     }
 }
