@@ -26,8 +26,50 @@ paths:
           content:
             application/json:
               schema:
+                $ref: '#/components/schemas/ErrorWithData'
+    post:
+      summary: Create a new product
+      operationId: createProduct
+      requestBody:
+        description: Product object that needs to be added
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductBody'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  productId:
+                    type: string
+                  count:
+                    type: integer
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetails'
+        '409':
+          description: Product with the same title already exists
+          content:
+            application/json:
+              schema:
                 $ref: '#/components/schemas/Error'
-  
+        '500':
+          description: Error creating product and stock
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithData'
+
   /products/{productId}:
     get:
       summary: Get a product by ID
@@ -63,7 +105,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error500'
+                $ref: '#/components/schemas/ErrorWithData'
 
 components:
   schemas:
@@ -72,27 +114,47 @@ components:
       properties:
         id:
           type: integer
-        name:
+        title:
           type: string
-        platform:
-          type: string
-        genre:
+        description:
           type: string
         price:
           type: number
           format: float
-        rating:
+        count:
+          type: number
+          format: integer
+    CreateProductBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        price:
           type: number
           format: float
+        count:
+          type: number
+          format: integer
     Error:
       type: object
       properties:
         error:
           type: string
-    Error500:
+    ErrorWithData:
       type: object
       properties:
-        error:
+        message:
           type: string
         data:
+          type: object
+    ErrorWithDetails:
+      type: object
+      properties:
+        message:
           type: string
+        data:
+          type: array
+          items:
+            type: string
