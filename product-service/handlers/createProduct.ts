@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import * as AWS from 'aws-sdk';
 import { DynamoDB } from 'aws-sdk';
 import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { headers } from './headers';
 
 export const handler = async (
     event: APIGatewayEvent
@@ -27,6 +28,7 @@ export const handler = async (
     if (invalidBodyFields.length) {
         return {
             statusCode: 400,
+            headers,
             body: JSON.stringify({
                 message: 'Missing required fields',
                 data: invalidBodyFields,
@@ -63,6 +65,7 @@ export const handler = async (
     if (existingProduct) {
         return {
             statusCode: 409,
+            headers,
             body: JSON.stringify({
                 message: 'Product with the same title already exists',
                 productId: existingProduct.id,
@@ -103,6 +106,7 @@ export const handler = async (
 
         return {
             statusCode: 201,
+            headers,
             body: JSON.stringify({
                 message: 'Product and stock created successfully',
                 productId,
@@ -119,7 +123,7 @@ export const handler = async (
             statusCode: 500,
             body: JSON.stringify({
                 message: 'Error creating product and stock',
-                error,
+                data: error,
             }),
         };
     }
