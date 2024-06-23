@@ -3,7 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
     DynamoDBDocumentClient,
     TransactWriteCommand,
-    QueryCommand,
+    ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { headers } from './headers';
@@ -17,6 +17,8 @@ export const handler = async (
     const dynamoDB = DynamoDBDocumentClient.from(dynamoDBClient);
 
     const requestBody = JSON.parse(event.body || '{}');
+
+    console.log('[createProduct] Request body:', requestBody);
 
     const productTitle = requestBody.title;
     const productPrice = requestBody.price;
@@ -42,9 +44,9 @@ export const handler = async (
     }
 
     // Check if product with such title was already created
-    const params: any = {
+    const scanParams: any = {
         TableName: process.env.PRODUCTS_TABLE_NAME!,
-        KeyConditionExpression: 'title = :title',
+        FilterExpression: 'title = :title',
         ExpressionAttributeValues: {
             ':title': productTitle,
         },
@@ -54,7 +56,7 @@ export const handler = async (
     let existingProduct;
 
     try {
-        const data = await dynamoDB.send(new QueryCommand(params));
+        const data = await dynamoDB.send(new ScanCommand(scanParams));
         existingProduct =
             data.Items && data.Items.length > 0 ? data.Items[0] : null;
     } catch (error) {
