@@ -9,7 +9,7 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
     console.log('[getProductsList] Incoming request:', event);
 
-    const client = new DynamoDBClient({ region: process.env.AWS_REGION });
+    const client = new DynamoDBClient();
     const ddbDocClient = DynamoDBDocumentClient.from(client);
 
     const productsTable = process.env.PRODUCTS_TABLE_NAME;

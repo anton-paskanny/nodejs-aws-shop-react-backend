@@ -9,12 +9,9 @@ import {
     ScanCommandInput,
     DeleteCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import {
-    PRODUCT_SERVICE_TABLES,
-    PRODUCT_SERVICE_AWS_REGION,
-} from '../utils/constants';
+import { PRODUCT_SERVICE_TABLES } from '../utils/constants';
 
-const client = new DynamoDBClient({ region: PRODUCT_SERVICE_AWS_REGION });
+const client = new DynamoDBClient();
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
 const checkTableExists = async (tableName: string): Promise<boolean> => {

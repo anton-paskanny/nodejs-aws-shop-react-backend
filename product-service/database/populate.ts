@@ -3,12 +3,9 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 
 import { productsListMock } from '../mocks/products';
 import { stocksListMock } from '../mocks/stocks';
-import {
-    PRODUCT_SERVICE_TABLES,
-    PRODUCT_SERVICE_AWS_REGION,
-} from '../utils/constants';
+import { PRODUCT_SERVICE_TABLES } from '../utils/constants';
 
-const client = new DynamoDBClient({ region: PRODUCT_SERVICE_AWS_REGION });
+const client = new DynamoDBClient();
 const ddbDocClient = DynamoDBDocumentClient.from(client);
 
 const productsMockData = productsListMock;

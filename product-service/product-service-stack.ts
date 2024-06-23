@@ -5,10 +5,7 @@ import { ProductApi } from './product-service-api-gateway';
 import { GetProductsListLambda } from './lambdas/get-products-list-lambda';
 import { GetProductsByIdLambda } from './lambdas/get-products-by-id-lambda';
 import { CreateProductLambda } from './lambdas/create-product-lambda';
-import {
-    PRODUCT_SERVICE_AWS_REGION,
-    PRODUCT_SERVICE_TABLES,
-} from './utils/constants';
+import { PRODUCT_SERVICE_TABLES } from './utils/constants';
 
 export class ProductServiceStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -28,7 +25,6 @@ export class ProductServiceStack extends cdk.Stack {
         const environment = {
             PRODUCTS_TABLE_NAME: PRODUCT_SERVICE_TABLES.products,
             STOCKS_TABLE_NAME: PRODUCT_SERVICE_TABLES.stocks,
-            AWS_REGION: PRODUCT_SERVICE_AWS_REGION,
         };
 
         const getProductsListLambda = new GetProductsListLambda(
