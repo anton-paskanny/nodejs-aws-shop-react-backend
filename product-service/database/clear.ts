@@ -32,7 +32,10 @@ const checkTableExists = async (tableName: string): Promise<boolean> => {
     }
 };
 
-const deleteItems = async (tableName: string): Promise<void> => {
+const deleteItems = async (
+    tableName: string,
+    primaryKey: string
+): Promise<void> => {
     try {
         const scanParams: ScanCommandInput = { TableName: tableName };
         const data = await ddbDocClient.send(new ScanCommand(scanParams));
@@ -41,7 +44,9 @@ const deleteItems = async (tableName: string): Promise<void> => {
             for (const item of data.Items) {
                 const deleteParams: DeleteCommandInput = {
                     TableName: tableName,
-                    Key: { id: item.id },
+                    Key: {
+                        [primaryKey]: item[primaryKey],
+                    },
                 };
 
                 try {
@@ -70,7 +75,7 @@ const clearTables = async (): Promise<void> => {
     );
 
     if (productsTableExists) {
-        await deleteItems(PRODUCT_SERVICE_TABLES.products);
+        await deleteItems(PRODUCT_SERVICE_TABLES.products, 'id');
     } else {
         console.log(
             `Table ${PRODUCT_SERVICE_TABLES.products} does not exist. Skipping deletion.`
@@ -78,7 +83,7 @@ const clearTables = async (): Promise<void> => {
     }
 
     if (stocksTableExists) {
-        await deleteItems(PRODUCT_SERVICE_TABLES.stocks);
+        await deleteItems(PRODUCT_SERVICE_TABLES.stocks, 'product_id');
     } else {
         console.log(
             `Table ${PRODUCT_SERVICE_TABLES.stocks} does not exist. Skipping deletion.`
