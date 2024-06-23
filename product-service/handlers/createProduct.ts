@@ -1,6 +1,10 @@
 import { randomUUID } from 'crypto';
-import * as AWS from 'aws-sdk';
-import { DynamoDB } from 'aws-sdk';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import {
+    DynamoDBDocumentClient,
+    TransactWriteCommand,
+    QueryCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { headers } from './headers';
 
@@ -9,19 +13,20 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
     console.log('[createProduct] Incoming request:', event);
 
-    const dynamoDB = new AWS.DynamoDB.DocumentClient();
+    const dynamoDBClient = new DynamoDBClient();
+    const dynamoDB = DynamoDBDocumentClient.from(dynamoDBClient);
 
     const requestBody = JSON.parse(event.body || '{}');
 
     const productTitle = requestBody.title;
     const productPrice = requestBody.price;
-    const productDescrition = requestBody.description;
+    const productDescription = requestBody.description;
     const initialStockCount = requestBody.count;
 
     const invalidBodyFields = [];
 
     if (!productTitle) invalidBodyFields.push('title');
-    if (!productDescrition) invalidBodyFields.push('description');
+    if (!productDescription) invalidBodyFields.push('description');
     if (!productPrice) invalidBodyFields.push('price');
     if (initialStockCount === undefined) invalidBodyFields.push('count');
 
@@ -37,7 +42,7 @@ export const handler = async (
     }
 
     // Check if product with such title was already created
-    const params: AWS.DynamoDB.DocumentClient.QueryInput = {
+    const params: any = {
         TableName: process.env.PRODUCTS_TABLE_NAME!,
         KeyConditionExpression: 'title = :title',
         ExpressionAttributeValues: {
@@ -49,9 +54,7 @@ export const handler = async (
     let existingProduct;
 
     try {
-        const data = await new AWS.DynamoDB.DocumentClient()
-            .query(params)
-            .promise();
+        const data = await dynamoDB.send(new QueryCommand(params));
         existingProduct =
             data.Items && data.Items.length > 0 ? data.Items[0] : null;
     } catch (error) {
@@ -75,24 +78,25 @@ export const handler = async (
 
     const productId = randomUUID();
 
-    const transactionParams: DynamoDB.TransactWriteItemsInput = {
+    const transactionParams: any = {
         TransactItems: [
             {
                 Put: {
                     TableName: process.env.PRODUCTS_TABLE_NAME!,
                     Item: {
-                        id: { S: productId },
+                        id: productId,
                         title: productTitle,
+                        description: productDescription,
                         price: productPrice,
                     },
-                    ConditionExpression: 'attribute_not_exists(productId)',
+                    ConditionExpression: 'attribute_not_exists(id)',
                 },
             },
             {
                 Put: {
                     TableName: process.env.STOCKS_TABLE_NAME!,
                     Item: {
-                        product_id: { S: productId },
+                        product_id: productId,
                         count: initialStockCount,
                     },
                     ConditionExpression: 'attribute_not_exists(product_id)',
@@ -102,7 +106,7 @@ export const handler = async (
     };
 
     try {
-        await dynamoDB.transactWrite(transactionParams).promise();
+        await dynamoDB.send(new TransactWriteCommand(transactionParams));
 
         return {
             statusCode: 201,
