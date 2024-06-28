@@ -6,6 +6,7 @@ import { Construct } from 'constructs';
 interface ProductApiProps extends cdk.StackProps {
     getProductsListLambda: lambda.Function;
     getProductsByIdLambda: lambda.Function;
+    createProductLambda: lambda.Function;
 }
 
 export class ProductApi extends Construct {
@@ -27,6 +28,11 @@ export class ProductApi extends Construct {
             props.getProductsListLambda
         );
         products.addMethod('GET', getProductsListIntegration);
+
+        const createProductIntegration = new apigateway.LambdaIntegration(
+            props.createProductLambda
+        );
+        products.addMethod('POST', createProductIntegration);
 
         const singleProduct = products.addResource('{productId}');
 

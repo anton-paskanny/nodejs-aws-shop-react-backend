@@ -2,7 +2,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { LambdaEnvironmentType } from '../types/environment';
 
-export class GetProductsByIdLambda extends Construct {
+export class CreateProductLambda extends Construct {
     public readonly lambdaFunction: lambda.Function;
 
     constructor(
@@ -14,11 +14,11 @@ export class GetProductsByIdLambda extends Construct {
 
         this.lambdaFunction = new lambda.Function(
             this,
-            'GetProductsByIdHandler',
+            'CreateProductHandler',
             {
                 runtime: lambda.Runtime.NODEJS_20_X,
                 code: lambda.Code.fromAsset('handlers'),
-                handler: 'getProductsById.handler',
+                handler: 'createProduct.handler',
                 environment,
             }
         );

@@ -1,9 +1,23 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-
-import { productsListMock } from './products';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { headers } from './headers';
 
-export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const handler = async (
+    event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> => {
+    console.log('[getProductsById] Incoming request:', event);
+
+    const client = new DynamoDBClient();
+    const ddbDocClient = DynamoDBDocumentClient.from(client);
+
+    const productsTable = process.env.PRODUCTS_TABLE_NAME;
+    const stocksTable = process.env.STOCKS_TABLE_NAME;
+
+    if (!productsTable || !stocksTable) {
+        throw new Error('No tables defined in the environment variables');
+    }
+
     try {
         const productId = event.pathParameters?.productId;
 
@@ -17,24 +31,47 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             };
         }
 
-        const convertedProductId = Number.parseInt(productId);
-
-        const product = productsListMock.find((item) => item.id === convertedProductId);
+        const getProductParams = {
+            TableName: productsTable,
+            Key: {
+                id: productId,
+            },
+        };
+        const productData = await ddbDocClient.send(
+            new GetCommand(getProductParams)
+        );
+        const product = productData.Item;
 
         if (!product) {
             return {
                 statusCode: 404,
                 headers,
                 body: JSON.stringify({
-                    error: `Product with ${productId} not found`,
+                    error: `Product with ID ${productId} not found`,
                 }),
             };
         }
 
+        const getStockParams = {
+            TableName: stocksTable,
+            Key: {
+                product_id: productId,
+            },
+        };
+        const stockData = await ddbDocClient.send(
+            new GetCommand(getStockParams)
+        );
+        const count = stockData.Item ? stockData.Item.count : 0;
+
+        const fullProduct = {
+            ...product,
+            count: count,
+        };
+
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(product),
+            body: JSON.stringify(fullProduct),
         };
     } catch (error: any) {
         console.error('[getProductsById] Error:', error);
@@ -43,7 +80,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             headers,
             body: JSON.stringify({
                 message: 'Internal Server Error',
-                data: error
+                data: error,
             }),
         };
     }
