@@ -5,10 +5,68 @@ import {
     CopyObjectCommand,
     DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
-import * as csvParser from 'csv-parser';
+import csvParser from 'csv-parser';
 import { Readable } from 'stream';
+import { ProductItemFull } from '../../types/product';
 
 const s3Client = new S3Client();
+
+const parseCSV = (stream: Readable): Promise<ProductItemFull[]> => {
+    let hasData = false;
+
+    return new Promise((resolve, reject): void => {
+        const products: ProductItemFull[] = [];
+        stream
+            .pipe(csvParser())
+            .on('data', (data: ProductItemFull): void => {
+                hasData = true;
+                console.log('[fileParser] [data], Record:', data);
+                products.push(data);
+            })
+            .on('end', () => {
+                console.log('[fileParser] end event');
+
+                if (!hasData) {
+                    console.log('[fileParser] No data found in CSV file.');
+                }
+
+                console.log('[fileParser] CSV file processed successfully');
+                console.log('[fileParser] parsed products: ', products);
+
+                resolve(products);
+            })
+            .on('error', (error: string) => {
+                console.error('[fileParser] error event');
+                console.error('[fileParser] Error processing CSV file:', error);
+                reject(error);
+            });
+    });
+};
+
+const getObject = async (bucket: string, key: string) => {
+    const command: GetObjectCommand = new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+    });
+    return s3Client.send(command);
+};
+
+const copyObject = async (bucket: string, key: string, newKey: string) => {
+    const command: CopyObjectCommand = new CopyObjectCommand({
+        Bucket: bucket,
+        CopySource: `${bucket}/${key}`,
+        Key: newKey,
+    });
+    return s3Client.send(command);
+};
+
+const deleteObject = async (bucket: string, key: string) => {
+    const command: DeleteObjectCommand = new DeleteObjectCommand({
+        Bucket: bucket,
+        Key: key,
+    });
+    return s3Client.send(command);
+};
 
 export const handler: S3Handler = async (event: S3Event) => {
     console.log(
@@ -24,55 +82,30 @@ export const handler: S3Handler = async (event: S3Event) => {
         Key: key,
     };
 
-    console.log('[fileParser] bucketName:', params);
+    console.log('[fileParser] params:', params);
 
     try {
-        const command = new GetObjectCommand(params);
-        const data = await s3Client.send(command);
+        const data = await getObject(bucketName, key);
+
+        if (!data.Body) {
+            throw new Error('[fileParser] data.Body is undefined');
+        }
 
         const s3Stream = data.Body as Readable;
 
-        let hasData = false;
+        const productsFromCSV: ProductItemFull[] = await parseCSV(s3Stream);
 
-        s3Stream
-            .pipe(csvParser())
-            .on('data', (data) => {
-                hasData = true;
-                console.log('[fileParser] [data], Record:', data);
-            })
-            .on('end', async () => {
-                console.log('[fileParser] end event');
+        console.log('[fileParser] productsFromCSV:', productsFromCSV);
 
-                if (!hasData) {
-                    console.log('[fileParser] No data found in CSV file.');
-                }
+        const parsedKey = key.replace('uploaded/', 'parsed/');
 
-                console.log('[fileParser] CSV file processed successfully');
+        console.log('[fileParser] Copying file to:', parsedKey);
+        await copyObject(bucketName, key, parsedKey);
 
-                const parsedKey = key.replace('uploaded/', 'parsed/');
-                const copyParams = {
-                    Bucket: bucketName,
-                    CopySource: `${bucketName}/${key}`,
-                    Key: parsedKey,
-                };
-                console.log('[fileParser] Copying file to:', parsedKey);
-                await s3Client.send(new CopyObjectCommand(copyParams));
+        console.log('[fileParser] Deleting file from:', key);
+        await deleteObject(bucketName, key);
 
-                const deleteParams = {
-                    Bucket: bucketName,
-                    Key: key,
-                };
-                console.log('[fileParser] Deleting file from:', key);
-                await s3Client.send(new DeleteObjectCommand(deleteParams));
-
-                console.log(
-                    '[fileParser] File moved to parsed folder successfully'
-                );
-            })
-            .on('error', (error) => {
-                console.error('[fileParser] error event');
-                console.error('[fileParser] Error processing CSV file:', error);
-            });
+        console.log('[fileParser] File moved to parsed folder successfully');
     } catch (error) {
         console.error('[fileParser] Error getting object from S3:', error);
     }
