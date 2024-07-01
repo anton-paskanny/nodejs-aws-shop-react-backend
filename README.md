@@ -5,6 +5,7 @@ This is a repository for the backend part developed with CDK and TypeScript.
 ## List of services
 
 -   `product-service` - service which is responsible for products
+-   `import-service` - service which is responsible for parsing csv files
 
 
 ## Useful links
