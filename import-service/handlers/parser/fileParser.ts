@@ -5,23 +5,27 @@ import {
     CopyObjectCommand,
     DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import csvParser from 'csv-parser';
 import { Readable } from 'stream';
-import { ProductItemFull } from '../../types/product';
+import { ProductItemInCSV } from '../../types/product';
 
 const s3Client = new S3Client();
 
-const parseCSV = (stream: Readable): Promise<ProductItemFull[]> => {
+const sqsClient = new SQSClient();
+
+const SQS_URL = process.env.SQS_URL;
+
+const parseCSV = (stream: Readable): Promise<ProductItemInCSV[]> => {
     let hasData = false;
 
     return new Promise((resolve, reject): void => {
-        const products: ProductItemFull[] = [];
         stream
             .pipe(csvParser())
-            .on('data', (data: ProductItemFull): void => {
+            .on('data', async (data: ProductItemInCSV) => {
                 hasData = true;
-                console.log('[fileParser] [data], Record:', data);
-                products.push(data);
+
+                await sendToSqs(data);
             })
             .on('end', () => {
                 console.log('[fileParser] end event');
@@ -31,9 +35,6 @@ const parseCSV = (stream: Readable): Promise<ProductItemFull[]> => {
                 }
 
                 console.log('[fileParser] CSV file processed successfully');
-                console.log('[fileParser] parsed products: ', products);
-
-                resolve(products);
             })
             .on('error', (error: string) => {
                 console.error('[fileParser] error event');
@@ -68,6 +69,27 @@ const deleteObject = async (bucket: string, key: string) => {
     return s3Client.send(command);
 };
 
+const sendToSqs = async (data: ProductItemInCSV) => {
+    console.log('[fileParser] sendToSqs, data: ', data);
+    console.log('[fileParser] sendToSqs, SQS_URL: ', SQS_URL);
+
+    const sqsParams = {
+        QueueUrl: SQS_URL,
+        MessageBody: JSON.stringify(data),
+    };
+
+    console.log('[fileParser] sendToSqs, sqsParams', sqsParams);
+
+    try {
+        const command = new SendMessageCommand(sqsParams);
+        await sqsClient.send(command);
+
+        console.log('[fileParser] sendToSqs, success');
+    } catch (error) {
+        console.error('Error sending message to SQS:', error);
+    }
+};
+
 export const handler: S3Handler = async (event: S3Event) => {
     console.log(
         '[fileParser] Incoming S3 event:',
@@ -93,9 +115,7 @@ export const handler: S3Handler = async (event: S3Event) => {
 
         const s3Stream = data.Body as Readable;
 
-        const productsFromCSV: ProductItemFull[] = await parseCSV(s3Stream);
-
-        console.log('[fileParser] productsFromCSV:', productsFromCSV);
+        await parseCSV(s3Stream);
 
         const parsedKey = key.replace('uploaded/', 'parsed/');
 
