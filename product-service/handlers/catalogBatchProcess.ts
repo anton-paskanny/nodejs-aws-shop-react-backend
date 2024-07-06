@@ -34,7 +34,7 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
                     id: { S: item.id },
                     title: { S: item.title },
                     description: { S: item.description },
-                    price: { N: item.price.toString() },
+                    price: { N: item.price?.toString() },
                 },
             },
         };
@@ -42,8 +42,8 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
         const stockPutRequest = {
             PutRequest: {
                 Item: {
-                    productId: { S: item.id },
-                    count: { N: item.count.toString() },
+                    product_id: { S: item.id },
+                    count: { N: item.count?.toString() },
                 },
             },
         };
@@ -78,6 +78,8 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
 
         console.log('[catalogBatchProcess] Batch write successful');
 
+        console.log('[catalogBatchProcess] SNS_TOPIC_ARN: ', SNS_TOPIC_ARN);
+
         const message = {
             Message: JSON.stringify({
                 default: 'Products successfully created',
@@ -87,7 +89,7 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
             MessageStructure: 'json',
         };
 
-        console.log('[catalogBatchProcess] Batch write successful: ', message);
+        console.log('[catalogBatchProcess] SNS message: ', message);
 
         const publishCommand = new PublishCommand(message);
         await snsClient.send(publishCommand);
