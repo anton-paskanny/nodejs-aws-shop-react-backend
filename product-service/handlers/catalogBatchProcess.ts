@@ -9,7 +9,12 @@ import { SQSEvent, SQSHandler } from 'aws-lambda';
 const dynamoClient = new DynamoDBClient({});
 const snsClient = new SNSClient({});
 
-const { PRODUCTS_TABLE_NAME, STOCKS_TABLE_NAME, SNS_TOPIC_ARN } = process.env;
+const {
+    PRODUCTS_TABLE_NAME,
+    STOCKS_TABLE_NAME,
+    SNS_CREATE_TOPIC_ARN,
+    SNS_PRICE_LIMIT_TOPIC_ARN,
+} = process.env;
 
 export const handler: SQSHandler = async (event: SQSEvent) => {
     console.log('[catalogBatchProcess] event: ', event);
@@ -78,14 +83,17 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
 
         console.log('[catalogBatchProcess] Batch write successful');
 
-        console.log('[catalogBatchProcess] SNS_TOPIC_ARN: ', SNS_TOPIC_ARN);
+        console.log(
+            '[catalogBatchProcess] SNS_CREATE_TOPIC_ARN: ',
+            SNS_CREATE_TOPIC_ARN
+        );
 
         const message = {
             Message: JSON.stringify({
                 default: 'Products successfully created',
                 products: records,
             }),
-            TopicArn: SNS_TOPIC_ARN,
+            TopicArn: SNS_CREATE_TOPIC_ARN,
             MessageStructure: 'json',
         };
 
@@ -93,7 +101,39 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
 
         const publishCommand = new PublishCommand(message);
         await snsClient.send(publishCommand);
-        console.log('[catalogBatchProcess] SNS notification sent');
+        console.log(
+            '[catalogBatchProcess] SNS notification sent (products created)'
+        );
+
+        console.log(
+            '[catalogBatchProcess] SNS_CREATE_TOPIC_ARN: ',
+            SNS_PRICE_LIMIT_TOPIC_ARN
+        );
+
+        for (const product of records) {
+            if (product.price > 100) {
+                const message = {
+                    Message: JSON.stringify({
+                        default: 'Products has a price above limit',
+                        product: product,
+                    }),
+                    TopicArn: SNS_PRICE_LIMIT_TOPIC_ARN,
+                    MessageAttributes: {
+                        price: {
+                            DataType: 'Number',
+                            StringValue: product.price.toString(),
+                        },
+                    },
+                };
+
+                const publishCommand = new PublishCommand(message);
+                await snsClient.send(publishCommand);
+                console.log(
+                    '[catalogBatchProcess] SNS price limit product is published successfully:',
+                    product
+                );
+            }
+        }
     } catch (error) {
         console.error('[catalogBatchProcess] Error writing to DynamoDB', error);
     }

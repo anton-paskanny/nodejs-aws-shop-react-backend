@@ -22,6 +22,27 @@ export class ProductServiceStack extends cdk.Stack {
             new sns_subscriptions.EmailSubscription('anton.paskanny@gmail.com')
         );
 
+        const productPriceLimitExceededTopic = new sns.Topic(
+            this,
+            'ProductPriceLimitExceededTopic',
+            {
+                displayName: 'Product Price Limit Exceeded Topic',
+            }
+        );
+
+        productPriceLimitExceededTopic.addSubscription(
+            new sns_subscriptions.EmailSubscription(
+                'anton.paskanny@gmail.com',
+                {
+                    filterPolicy: {
+                        price: sns.SubscriptionFilter.numericFilter({
+                            greaterThan: 100,
+                        }),
+                    },
+                }
+            )
+        );
+
         const catalogItemsQueue = new sqs.Queue(this, 'CatalogItemsQueue', {
             queueName: 'catalogItemsQueue',
         });
@@ -40,7 +61,8 @@ export class ProductServiceStack extends cdk.Stack {
         const environment = {
             PRODUCTS_TABLE_NAME: PRODUCT_SERVICE_TABLES.products,
             STOCKS_TABLE_NAME: PRODUCT_SERVICE_TABLES.stocks,
-            SNS_TOPIC_ARN: createProductTopic.topicArn,
+            SNS_CREATE_TOPIC_ARN: createProductTopic.topicArn,
+            SNS_PRICE_LIMIT_TOPIC_ARN: createProductTopic.topicArn,
             SQS_URL: catalogItemsQueue.queueUrl,
         };
 
