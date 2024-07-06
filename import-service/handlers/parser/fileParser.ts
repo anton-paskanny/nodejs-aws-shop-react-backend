@@ -16,7 +16,7 @@ const sqsClient = new SQSClient();
 
 const SQS_URL = process.env.SQS_URL;
 
-const parseCSV = (stream: Readable): Promise<ProductItemInCSV[]> => {
+const parseCSV = (stream: Readable): Promise<void> => {
     let hasData = false;
 
     return new Promise((resolve, reject): void => {
@@ -35,6 +35,7 @@ const parseCSV = (stream: Readable): Promise<ProductItemInCSV[]> => {
                 }
 
                 console.log('[fileParser] CSV file processed successfully');
+                resolve();
             })
             .on('error', (error: string) => {
                 console.error('[fileParser] error event');
