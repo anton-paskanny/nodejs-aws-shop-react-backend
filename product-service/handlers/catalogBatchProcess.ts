@@ -114,7 +114,7 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
             if (product.price > 100) {
                 const message = {
                     Message: JSON.stringify({
-                        default: 'Products has a price above limit',
+                        default: 'Product has a price above limit',
                         product: product,
                     }),
                     TopicArn: SNS_PRICE_LIMIT_TOPIC_ARN,
