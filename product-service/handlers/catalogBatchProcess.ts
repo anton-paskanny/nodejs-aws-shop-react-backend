@@ -1,15 +1,14 @@
 import {
     DynamoDBClient,
     BatchWriteItemCommand,
+    GetItemCommand,
 } from '@aws-sdk/client-dynamodb';
-import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { randomUUID } from 'node:crypto';
 import { SQSEvent, SQSHandler } from 'aws-lambda';
 import { sendSnsMessage } from '../utils/sns-helpers';
 import { PRODUCT_PRICE_LIMIT } from '../utils/constants';
 
 const dynamoClient = new DynamoDBClient({});
-const snsClient = new SNSClient({});
 
 const { PRODUCTS_TABLE_NAME, STOCKS_TABLE_NAME, SNS_CREATE_TOPIC_ARN } =
     process.env;
@@ -20,42 +19,58 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
     const productPutRequests: any[] = [];
     const stockPutRequests: any[] = [];
 
-    const records = event.Records.map((record) => {
-        const item = JSON.parse(record.body);
+    const records = await Promise.all(
+        event.Records.map(async (record) => {
+            const item = JSON.parse(record.body);
 
-        console.log('[catalogBatchProcess] record body: ', item);
+            console.log('[catalogBatchProcess] record body: ', item);
 
-        const id = randomUUID();
+            // Check if the product with the same title already exists
+            const existingProduct = await dynamoClient.send(
+                new GetItemCommand({
+                    TableName: PRODUCTS_TABLE_NAME,
+                    Key: { title: { S: item.title } },
+                })
+            );
 
-        console.log('[catalogBatchProcess] randomUUID: ', id);
+            if (existingProduct.Item) {
+                console.log(
+                    '[catalogBatchProcess] Product with such title already exists: ',
+                    item.title
+                );
+                item.id = existingProduct.Item.id.S;
+            } else {
+                const id = randomUUID();
+                console.log('[catalogBatchProcess] randomUUID: ', id);
+                item.id = id;
+            }
 
-        item.id = id;
-
-        const productPutRequest = {
-            PutRequest: {
-                Item: {
-                    id: { S: item.id },
-                    title: { S: item.title },
-                    description: { S: item.description },
-                    price: { N: item.price?.toString() },
+            const productPutRequest = {
+                PutRequest: {
+                    Item: {
+                        id: { S: item.id },
+                        title: { S: item.title },
+                        description: { S: item.description },
+                        price: { N: item.price?.toString() },
+                    },
                 },
-            },
-        };
+            };
 
-        const stockPutRequest = {
-            PutRequest: {
-                Item: {
-                    product_id: { S: item.id },
-                    count: { N: item.count?.toString() },
+            const stockPutRequest = {
+                PutRequest: {
+                    Item: {
+                        product_id: { S: item.id },
+                        count: { N: item.count?.toString() },
+                    },
                 },
-            },
-        };
+            };
 
-        productPutRequests.push(productPutRequest);
-        stockPutRequests.push(stockPutRequest);
+            productPutRequests.push(productPutRequest);
+            stockPutRequests.push(stockPutRequest);
 
-        return item;
-    });
+            return item;
+        })
+    );
 
     const productParams = {
         RequestItems: {
