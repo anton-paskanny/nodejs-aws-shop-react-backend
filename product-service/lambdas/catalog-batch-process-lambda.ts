@@ -20,8 +20,6 @@ export class CatalogBatchProcessLambda extends Construct {
                 PRODUCTS_TABLE_NAME: environment.PRODUCTS_TABLE_NAME,
                 STOCKS_TABLE_NAME: environment.STOCKS_TABLE_NAME,
                 SNS_CREATE_TOPIC_ARN: environment.SNS_CREATE_TOPIC_ARN,
-                SNS_PRICE_LIMIT_TOPIC_ARN:
-                    environment.SNS_PRICE_LIMIT_TOPIC_ARN,
             },
         });
     }

@@ -5,16 +5,14 @@ import {
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { randomUUID } from 'node:crypto';
 import { SQSEvent, SQSHandler } from 'aws-lambda';
+import { sendSnsMessage } from '../utils/sns-helpers';
+import { PRODUCT_PRICE_LIMIT } from '../utils/constants';
 
 const dynamoClient = new DynamoDBClient({});
 const snsClient = new SNSClient({});
 
-const {
-    PRODUCTS_TABLE_NAME,
-    STOCKS_TABLE_NAME,
-    SNS_CREATE_TOPIC_ARN,
-    SNS_PRICE_LIMIT_TOPIC_ARN,
-} = process.env;
+const { PRODUCTS_TABLE_NAME, STOCKS_TABLE_NAME, SNS_CREATE_TOPIC_ARN } =
+    process.env;
 
 export const handler: SQSHandler = async (event: SQSEvent) => {
     console.log('[catalogBatchProcess] event: ', event);
@@ -82,59 +80,89 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
         await dynamoClient.send(stockCommand);
 
         console.log('[catalogBatchProcess] Batch write successful');
-
-        console.log(
-            '[catalogBatchProcess] SNS_CREATE_TOPIC_ARN: ',
-            SNS_CREATE_TOPIC_ARN
-        );
-
-        const message = {
-            Message: JSON.stringify({
-                default: 'Products successfully created',
-                products: records,
-            }),
-            TopicArn: SNS_CREATE_TOPIC_ARN,
-            MessageStructure: 'json',
-        };
-
-        console.log('[catalogBatchProcess] SNS message: ', message);
-
-        const publishCommand = new PublishCommand(message);
-        await snsClient.send(publishCommand);
-        console.log(
-            '[catalogBatchProcess] SNS notification sent (products created)'
-        );
-
-        console.log(
-            '[catalogBatchProcess] SNS_CREATE_TOPIC_ARN: ',
-            SNS_PRICE_LIMIT_TOPIC_ARN
-        );
-
-        for (const product of records) {
-            if (product.price > 100) {
-                const message = {
-                    Message: JSON.stringify({
-                        default: 'Product has a price above limit',
-                        product: product,
-                    }),
-                    TopicArn: SNS_PRICE_LIMIT_TOPIC_ARN,
-                    MessageAttributes: {
-                        price: {
-                            DataType: 'Number',
-                            StringValue: product.price.toString(),
-                        },
-                    },
-                };
-
-                const publishCommand = new PublishCommand(message);
-                await snsClient.send(publishCommand);
-                console.log(
-                    '[catalogBatchProcess] SNS price limit product is published successfully:',
-                    product
-                );
-            }
-        }
     } catch (error) {
         console.error('[catalogBatchProcess] Error writing to DynamoDB', error);
+        return;
+    }
+
+    console.log('[catalogBatchProcess] Send sns messages block');
+
+    console.log(
+        '[catalogBatchProcess] SNS_CREATE_TOPIC_ARN: ',
+        SNS_CREATE_TOPIC_ARN
+    );
+
+    console.log('[catalogBatchProcess] Records array: ', records);
+
+    const snsMessageData = {
+        messageTitle: `The following products were successfully created`,
+        topicArn: SNS_CREATE_TOPIC_ARN || '',
+        subject: 'Products Creation Notification',
+        products: records,
+    };
+
+    console.log(
+        '[catalogBatchProcess] SNS creation products message data: ',
+        snsMessageData
+    );
+
+    try {
+        await sendSnsMessage(snsMessageData);
+        console.log(
+            '[catalogBatchProcess] SNS creation product message sent successfully'
+        );
+    } catch (error) {
+        console.error(
+            '[catalogBatchProcess] Error sending SNS creation product message:',
+            error
+        );
+        return;
+    }
+
+    console.log(
+        '[catalogBatchProcess] SNS creation products message sent successfully: '
+    );
+
+    let priceLimitProducts = [];
+
+    for (const product of records) {
+        if (product.price > PRODUCT_PRICE_LIMIT) {
+            priceLimitProducts.push(product);
+        }
+    }
+
+    if (priceLimitProducts.length > 0) {
+        console.log(
+            '[catalogBatchProcess] Products with price limit: ',
+            priceLimitProducts
+        );
+
+        const snsPriceLimitMessageData = {
+            messageTitle: `Products with price above limit (${PRODUCT_PRICE_LIMIT})`,
+            topicArn: SNS_CREATE_TOPIC_ARN || '',
+            subject: 'Price Limit Exceeded Notification',
+            products: priceLimitProducts,
+            attributes: {
+                price: {
+                    DataType: 'Number',
+                    StringValue: Math.max(
+                        ...priceLimitProducts.map((product) => product.price)
+                    ).toString(),
+                },
+            },
+        };
+
+        try {
+            await sendSnsMessage(snsPriceLimitMessageData);
+            console.log(
+                '[catalogBatchProcess] SNS price limit products were published successfully:',
+                priceLimitProducts
+            );
+        } catch (error) {
+            console.error(
+                '[catalogBatchProcess] Error sending SNS price limit products message:',
+                error
+            );
+        }
     }
 };

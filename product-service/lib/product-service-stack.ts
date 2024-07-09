@@ -9,34 +9,31 @@ import { ProductApi } from '../api/product-service-api-gateway';
 import { GetProductsListLambda } from '../lambdas/get-products-list-lambda';
 import { GetProductsByIdLambda } from '../lambdas/get-products-by-id-lambda';
 import { CreateProductLambda } from '../lambdas/create-product-lambda';
-import { PRODUCT_SERVICE_TABLES } from '../utils/constants';
+import {
+    PRODUCT_SERVICE_TABLES,
+    PRODUCT_PRICE_LIMIT,
+} from '../utils/constants';
 import { CatalogBatchProcessLambda } from '../lambdas/catalog-batch-process-lambda';
 
 export class ProductServiceStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
 
-        const createProductTopic = new sns.Topic(this, 'CreateProductTopic');
+        const createProductTopic = new sns.Topic(this, 'CreateProductTopic', {
+            displayName: 'Product successfully created',
+        });
 
         createProductTopic.addSubscription(
             new sns_subscriptions.EmailSubscription('anton.paskanny@gmail.com')
         );
 
-        const productPriceLimitExceededTopic = new sns.Topic(
-            this,
-            'ProductPriceLimitExceededTopic',
-            {
-                displayName: 'Product Price Limit Exceeded Topic',
-            }
-        );
-
-        productPriceLimitExceededTopic.addSubscription(
+        createProductTopic.addSubscription(
             new sns_subscriptions.EmailSubscription(
-                'anton.paskanny@gmail.com',
+                'wewerebornforthis99@gmail.com',
                 {
                     filterPolicy: {
                         price: sns.SubscriptionFilter.numericFilter({
-                            greaterThan: 100,
+                            greaterThan: PRODUCT_PRICE_LIMIT,
                         }),
                     },
                 }
@@ -62,7 +59,6 @@ export class ProductServiceStack extends cdk.Stack {
             PRODUCTS_TABLE_NAME: PRODUCT_SERVICE_TABLES.products,
             STOCKS_TABLE_NAME: PRODUCT_SERVICE_TABLES.stocks,
             SNS_CREATE_TOPIC_ARN: createProductTopic.topicArn,
-            SNS_PRICE_LIMIT_TOPIC_ARN: createProductTopic.topicArn,
             SQS_URL: catalogItemsQueue.queueUrl,
         };
 
