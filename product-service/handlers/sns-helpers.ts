@@ -2,6 +2,8 @@ import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 
 const snsClient = new SNSClient();
 
+export const PRODUCT_PRICE_LIMIT = 100;
+
 export type SnsMessageParamsType = {
     products: any[];
     messageTitle: string;

@@ -9,11 +9,9 @@ import { ProductApi } from '../api/product-service-api-gateway';
 import { GetProductsListLambda } from '../lambdas/get-products-list-lambda';
 import { GetProductsByIdLambda } from '../lambdas/get-products-by-id-lambda';
 import { CreateProductLambda } from '../lambdas/create-product-lambda';
-import {
-    PRODUCT_SERVICE_TABLES,
-    PRODUCT_PRICE_LIMIT,
-} from '../utils/constants';
+import { PRODUCT_SERVICE_TABLES } from '../utils/constants';
 import { CatalogBatchProcessLambda } from '../lambdas/catalog-batch-process-lambda';
+import { PRODUCT_PRICE_LIMIT } from '../handlers/sns-helpers';
 
 export class ProductServiceStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {

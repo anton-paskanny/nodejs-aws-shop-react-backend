@@ -1,14 +1,13 @@
 import {
     DynamoDBClient,
     BatchWriteItemCommand,
-    GetItemCommand,
+    ScanCommand,
 } from '@aws-sdk/client-dynamodb';
 import { randomUUID } from 'node:crypto';
 import { SQSEvent, SQSHandler } from 'aws-lambda';
-import { sendSnsMessage } from '../utils/sns-helpers';
-import { PRODUCT_PRICE_LIMIT } from '../utils/constants';
+import { sendSnsMessage, PRODUCT_PRICE_LIMIT } from './sns-helpers';
 
-const dynamoClient = new DynamoDBClient({});
+const dynamoClient = new DynamoDBClient();
 
 const { PRODUCTS_TABLE_NAME, STOCKS_TABLE_NAME, SNS_CREATE_TOPIC_ARN } =
     process.env;
@@ -25,25 +24,29 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
 
             console.log('[catalogBatchProcess] record body: ', item);
 
-            // Check if the product with the same title already exists
             const existingProduct = await dynamoClient.send(
-                new GetItemCommand({
+                new ScanCommand({
                     TableName: PRODUCTS_TABLE_NAME,
-                    Key: { title: { S: item.title } },
+                    FilterExpression: 'title = :title',
+                    ExpressionAttributeValues: {
+                        ':title': { S: item.title },
+                    },
                 })
             );
 
-            if (existingProduct.Item) {
+            if (existingProduct.Items && existingProduct.Items.length > 0) {
                 console.log(
                     '[catalogBatchProcess] Product with such title already exists: ',
                     item.title
                 );
-                item.id = existingProduct.Item.id.S;
+                item.id = existingProduct.Items[0].id.S;
             } else {
                 const id = randomUUID();
                 console.log('[catalogBatchProcess] randomUUID: ', id);
                 item.id = id;
             }
+
+            console.log('[catalogBatchProcess] item id: ', item.id);
 
             const productPutRequest = {
                 PutRequest: {
@@ -67,6 +70,8 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
 
             productPutRequests.push(productPutRequest);
             stockPutRequests.push(stockPutRequest);
+
+            console.log('[catalogBatchProcess] final item: ', item);
 
             return item;
         })
