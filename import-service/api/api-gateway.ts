@@ -20,6 +20,21 @@ export class ImportApi extends Construct {
             },
         });
 
+        const basicAuthorizerLambda = lambda.Function.fromFunctionName(
+            this,
+            'basicAuthorizerLambda',
+            'AuthFunction'
+        );
+
+        const authorizer = new apigateway.TokenAuthorizer(
+            this,
+            'basicAuthorizer',
+            {
+                handler: basicAuthorizerLambda,
+                identitySource: 'method.request.header.Authorization',
+            }
+        );
+
         const importResource = api.root.addResource('import');
 
         const importProductsFilesIntegration = new apigateway.LambdaIntegration(
@@ -29,6 +44,8 @@ export class ImportApi extends Construct {
             requestParameters: {
                 'method.request.querystring.name': true,
             },
+            authorizer: authorizer,
+            authorizationType: apigateway.AuthorizationType.CUSTOM,
         });
     }
 }

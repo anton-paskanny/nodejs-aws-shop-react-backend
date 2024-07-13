@@ -6,6 +6,7 @@ This is a repository for the backend part developed with CDK and TypeScript.
 
 -   `product-service` - service which is responsible for products
 -   `import-service` - service which is responsible for parsing csv files
+-   `authorization-service` - service which is responsible for auth process
 
 
 ## Useful links
