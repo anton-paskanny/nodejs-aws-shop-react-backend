@@ -95,7 +95,7 @@ describe('getProductsById Lambda Handler', () => {
             },
         } as unknown as APIGatewayProxyEvent;
 
-        mockSend.mockRejectedValueOnce(new Error('DynamoDB error Jesus'));
+        mockSend.mockRejectedValueOnce(new Error('DynamoDB error'));
 
         const result = await handler(mockEvent);
 

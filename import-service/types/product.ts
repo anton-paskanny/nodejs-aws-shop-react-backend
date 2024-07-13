@@ -1,5 +1,4 @@
-export type ProductItemFull = {
-    id: number;
+export type ProductItemInCSV = {
     title: string;
     description: string;
     price: number;
