@@ -9,7 +9,7 @@ export class AuthorizationServiceStack extends cdk.Stack {
 
     const login = "anton-paskanny";
 
-    console.log('process.env[login] - ', process.env[login]);
+    console.log('[AuthorizationServiceStack] process.env[login] - ', process.env[login]);
 
     const environment = {
       SECRET_KEY: process.env[login]

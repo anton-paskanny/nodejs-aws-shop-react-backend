@@ -1,5 +1,6 @@
 import { APIGatewayTokenAuthorizerEvent, APIGatewayProxyResult, APIGatewayAuthorizerResult } from 'aws-lambda';
 import { Base64 } from 'js-base64';
+import { headers } from './headers';
 
 type StatementEffect = "Allow" | "Deny";
 
@@ -25,6 +26,7 @@ export const handler = async (event: APIGatewayTokenAuthorizerEvent): Promise<AP
     if (!authToken) {
         return {
             statusCode: 401,
+            headers,
             body: JSON.stringify({ message: 'Unauthorized: No Authorization header provided' }),
         };
     }
@@ -34,12 +36,13 @@ export const handler = async (event: APIGatewayTokenAuthorizerEvent): Promise<AP
     if (authType !== 'Basic' || !token) {
         return {
             statusCode: 403,
+            headers,
             body: JSON.stringify({ message: 'Forbidden: Invalid Authorization token' }),
         };
     }
 
     const decodedToken = Base64.decode(token);
-    const [username, password] = decodedToken.split('_');
+    const [username, password] = decodedToken.split(':');
 
     const envPassword = process.env.SECRET_KEY;
 
@@ -50,6 +53,7 @@ export const handler = async (event: APIGatewayTokenAuthorizerEvent): Promise<AP
     } else {
         return {
             statusCode: 403,
+            headers,
             body: JSON.stringify({ message: 'Forbidden: Invalid credentials' }),
         };
     }
