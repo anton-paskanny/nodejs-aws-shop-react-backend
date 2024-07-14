@@ -17,6 +17,7 @@ export class ImportApi extends Construct {
             defaultCorsPreflightOptions: {
                 allowOrigins: apigateway.Cors.ALL_ORIGINS,
                 allowMethods: apigateway.Cors.ALL_METHODS,
+                allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
             },
         });
 
@@ -35,7 +36,13 @@ export class ImportApi extends Construct {
             }
         );
 
-        const importResource = api.root.addResource('import');
+        const importResource = api.root.addResource('import', {
+            defaultCorsPreflightOptions: {
+                allowOrigins: apigateway.Cors.ALL_ORIGINS,
+                allowMethods: apigateway.Cors.ALL_METHODS,
+                allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
+            },
+        });
 
         const importProductsFilesIntegration = new apigateway.LambdaIntegration(
             props.importProductsFileLambda

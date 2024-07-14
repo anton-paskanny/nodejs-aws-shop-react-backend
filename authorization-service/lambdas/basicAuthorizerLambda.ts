@@ -16,7 +16,7 @@ export class BasicAuthorizerLambda extends Construct {
             'BasicAuthorizerHandler',
             {
                 runtime: lambda.Runtime.NODEJS_20_X,
-                code: lambda.Code.fromAsset('handlers'),
+                code: lambda.Code.fromAsset('handlers/auth'),
                 handler: 'basicAuthorizer.handler',
                 functionName: 'AuthFunction',
                 environment,
