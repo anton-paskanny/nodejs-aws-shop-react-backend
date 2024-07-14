@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
+import { DEFAULT_4XX } from './responses';
 
 interface ImportApiProps extends cdk.StackProps {
     importProductsFileLambda: lambda.Function;
@@ -20,6 +21,8 @@ export class ImportApi extends Construct {
                 allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
             },
         });
+
+        api.addGatewayResponse('GetPresignedUrlDefault4xx', DEFAULT_4XX);
 
         const basicAuthorizerLambda = lambda.Function.fromFunctionName(
             this,
